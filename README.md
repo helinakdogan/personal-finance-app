@@ -118,9 +118,3 @@ Main tables:
 
 - Helin Akdoğan
 - Koray Özcan
-
----
-
-# License
-
-This project was developed for educational purposes.
