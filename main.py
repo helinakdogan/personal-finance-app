@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter import ttk
 
 from database import FinanceDatabase
 from windows.dashboard import DashboardWindow
@@ -8,40 +7,192 @@ from windows.add_income import AddIncomeWindow
 from windows.history import HistoryWindow
 from windows.reports import ReportsWindow
 from windows.categories import CategoriesWindow
+from PIL import Image, ImageTk
+
+APP_NAME = "Flowance"
+
+BG = "#F8FAFC"
+SURFACE = "#FFFFFF"
+
+TEXT = "#0F172A"
+MUTED = "#64748B"
+
+SOFT = "#F1F5F9"
+
+CYAN = "#7DD3FC"
+BLUE = "#60A5FA"
+PURPLE = "#818CF8"
+PINK = "#F9A8D4"
+
+SLATE = "#94A3B8"
+FONT = "Inter"
+
+
+
+
+class ActionCard(tk.Frame):
+    def __init__(self, parent, title, subtitle, accent, command):
+        super().__init__(parent, bg=SURFACE, cursor="hand2")
+
+        self.command = command
+        self.accent = accent
+        self.default_bg = SURFACE
+        self.hover_bg = "#F8FAFC"
+
+        self.configure(padx=22, pady=20)
+
+        self.dot = tk.Frame(self, bg=accent, width=9, height=9)
+        self.dot.grid(row=0, column=0, sticky="w", pady=(0, 18))
+        self.dot.grid_propagate(False)
+
+        self.title_label = tk.Label(
+            self,
+            text=title,
+            bg=SURFACE,
+            fg=TEXT,
+            font=(FONT, 15, "bold"),
+            anchor="w"
+        )
+        self.title_label.grid(row=1, column=0, sticky="w")
+
+        self.subtitle_label = tk.Label(
+            self,
+            text=subtitle,
+            bg=SURFACE,
+            fg=MUTED,
+            font=(FONT, 10),
+            anchor="w",
+            justify="left",
+            wraplength=180
+        )
+        self.subtitle_label.grid(row=2, column=0, sticky="w", pady=(8, 0))
+
+        self.grid_columnconfigure(0, weight=1)
+
+        for widget in (self, self.dot, self.title_label, self.subtitle_label):
+            widget.bind("<Button-1>", self.on_click)
+            widget.bind("<Enter>", self.on_enter)
+            widget.bind("<Leave>", self.on_leave)
+
+    def on_click(self, event=None):
+        self.command()
+
+    def on_enter(self, event=None):
+        self.configure(bg=self.hover_bg)
+        self.title_label.configure(bg=self.hover_bg, fg=self.accent)
+        self.subtitle_label.configure(bg=self.hover_bg)
+
+    def on_leave(self, event=None):
+        self.configure(bg=self.default_bg)
+        self.title_label.configure(bg=self.default_bg, fg=TEXT)
+        self.subtitle_label.configure(bg=self.default_bg)
 
 
 class MainApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Personal Finance")
-        self.geometry("300x380")
-        self.resizable(False, False)
+
+        self.title(APP_NAME)
+        self.geometry("960x640")
+        self.minsize(840, 580)
+        self.configure(bg=BG)
 
         self.db = FinanceDatabase()
         self.db.create_tables()
 
         self._windows = {}
-
         self.build_ui()
 
     def build_ui(self):
-        container = ttk.Frame(self, padding=20)
-        container.pack(fill="both", expand=True)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
-        ttk.Label(container, text="Personal Finance", font=("Tahoma", 16)).pack(pady=(0, 20))
+        page = tk.Frame(self, bg=BG)
+        page.grid(row=0, column=0, sticky="nsew", padx=64, pady=48)
+        page.grid_columnconfigure(0, weight=1)
+        page.grid_rowconfigure(1, weight=1)
 
-        ttk.Separator(container).pack(fill="x", pady=(0, 10))
+        header = tk.Frame(page, bg=BG)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 38))
+        header.grid_columnconfigure(0, weight=1)
 
-        ttk.Button(container, text="Dashboard", command=self.open_dashboard).pack(fill="x", pady=4)
-        ttk.Button(container, text="Add Expense", command=self.open_add_expense).pack(fill="x", pady=4)
-        ttk.Button(container, text="Add Income", command=self.open_add_income).pack(fill="x", pady=4)
-        ttk.Button(container, text="Transactions", command=self.open_history).pack(fill="x", pady=4)
-        ttk.Button(container, text="Reports", command=self.open_reports).pack(fill="x", pady=4)
-        ttk.Button(container, text="Categories", command=self.open_categories).pack(fill="x", pady=4)
+        image = Image.open("assets/logo.png")
+        image.thumbnail((180, 60))
 
-        ttk.Separator(container).pack(fill="x", pady=(10, 10))
+        self.logo = ImageTk.PhotoImage(image)
 
-        ttk.Button(container, text="Exit", command=self.destroy).pack(fill="x", pady=4)
+        logo_label = tk.Label(
+             header,
+            image=self.logo,
+            bg=BG
+        )
+
+        logo_label.grid(row=0, column=0, sticky="w")
+
+        title = tk.Label(
+            header,
+            text="Your money,\nclearly organized.",
+            bg=BG,
+            fg=TEXT,
+            font=(FONT, 40, "bold"),
+            justify="left"
+        )
+        title.grid(row=1, column=0, sticky="w", pady=(10, 10))
+
+        subtitle = tk.Label(
+            header,
+            text="A simple desktop workspace for income, expenses, categories and reports.",
+            bg=BG,
+            fg=MUTED,
+            font=(FONT, 13),
+            justify="left"
+        )
+        subtitle.grid(row=2, column=0, sticky="w")
+
+        close_btn = tk.Button(
+            header,
+            text="Close",
+            command=self.destroy,
+            bg=SOFT,
+            fg=TEXT,
+            activebackground="#E5E7EB",
+            activeforeground=TEXT,
+            relief="flat",
+            bd=0,
+            padx=18,
+            pady=9,
+            font=(FONT, 10),
+            cursor="hand2"
+        )
+        close_btn.grid(row=0, column=1, sticky="ne")
+
+        grid = tk.Frame(page, bg=BG)
+        grid.grid(row=1, column=0, sticky="nsew")
+        for i in range(3):
+            grid.grid_columnconfigure(i, weight=1, uniform="cards")
+
+
+        actions = [
+            ("Dashboard", "See balance, totals and recent activity.", BLUE, self.open_dashboard),
+            ("Add Expense", "Record spending with category and note.", PINK, self.open_add_expense),
+            ("Add Income", "Add salary, freelance or other income.", CYAN, self.open_add_income),
+            ("Transactions", "Review, edit and delete records.", SLATE, self.open_history),
+            ("Reports", "View charts and monthly insights.", PURPLE, self.open_reports),
+            ("Categories", "Manage labels for cleaner tracking.", BLUE, self.open_categories),
+        ]
+
+        for index, (title, subtitle, accent, command) in enumerate(actions):
+            card = ActionCard(grid, title, subtitle, accent, command)
+            card.grid(
+                row=index // 3,
+                column=index % 3,
+                sticky="nsew",
+                padx=10,
+                pady=10,
+                ipady=10
+            )
+
+      
 
     def _open_window(self, key, window_class):
         if key in self._windows and self._windows[key].winfo_exists():
