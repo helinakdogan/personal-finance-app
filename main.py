@@ -3,17 +3,18 @@ from tkinter import ttk
 
 from database import FinanceDatabase
 from windows.dashboard import DashboardWindow
+from windows.add_expense import AddExpenseWindow
+from windows.add_income import AddIncomeWindow
 from windows.history import HistoryWindow
 from windows.reports import ReportsWindow
 from windows.categories import CategoriesWindow
 
 
 class MainApp(tk.Tk):
-
     def __init__(self):
         super().__init__()
         self.title("Personal Finance")
-        self.geometry("280x320")
+        self.geometry("300x380")
         self.resizable(False, False)
 
         self.db = FinanceDatabase()
@@ -31,10 +32,12 @@ class MainApp(tk.Tk):
 
         ttk.Separator(container).pack(fill="x", pady=(0, 10))
 
-        ttk.Button(container, text="Dashboard",    command=self.open_dashboard).pack(fill="x", pady=4)
+        ttk.Button(container, text="Dashboard", command=self.open_dashboard).pack(fill="x", pady=4)
+        ttk.Button(container, text="Add Expense", command=self.open_add_expense).pack(fill="x", pady=4)
+        ttk.Button(container, text="Add Income", command=self.open_add_income).pack(fill="x", pady=4)
         ttk.Button(container, text="Transactions", command=self.open_history).pack(fill="x", pady=4)
-        ttk.Button(container, text="Reports",      command=self.open_reports).pack(fill="x", pady=4)
-        ttk.Button(container, text="Categories",   command=self.open_categories).pack(fill="x", pady=4)
+        ttk.Button(container, text="Reports", command=self.open_reports).pack(fill="x", pady=4)
+        ttk.Button(container, text="Categories", command=self.open_categories).pack(fill="x", pady=4)
 
         ttk.Separator(container).pack(fill="x", pady=(10, 10))
 
@@ -45,10 +48,17 @@ class MainApp(tk.Tk):
             self._windows[key].lift()
             self._windows[key].focus_set()
             return
+
         self._windows[key] = window_class(self, self.db)
 
     def open_dashboard(self):
         self._open_window("dashboard", DashboardWindow)
+
+    def open_add_expense(self):
+        self._open_window("add_expense", AddExpenseWindow)
+
+    def open_add_income(self):
+        self._open_window("add_income", AddIncomeWindow)
 
     def open_history(self):
         self._open_window("history", HistoryWindow)
