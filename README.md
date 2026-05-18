@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" width="220"/>
-
-# Flowance
+<img src="assets/logo.png" width="400"/>
 
 Modern personal finance desktop application built with Python, Tkinter and SQLite.
 
@@ -115,21 +113,6 @@ The application uses SQLite for local data storage.
 Main tables:
 - transactions
 - categories
-
----
-
-# UI Design
-
-Flowance uses a modern minimal UI inspired by Apple-style desktop applications.
-
-Design characteristics:
-- Soft neutral colors
-- Minimal borders
-- Responsive layouts
-- Custom dropdown components
-- Clean typography
-
----
 
 # Contributors
 
