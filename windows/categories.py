@@ -95,6 +95,7 @@ class CategoriesWindow(tk.Toplevel):
         super().__init__(parent)
 
         self.title("Categories")
+        self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
         self.geometry("760x620")
         self.minsize(680, 520)
         self.configure(bg=BG)

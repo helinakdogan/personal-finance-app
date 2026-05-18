@@ -319,6 +319,7 @@ class AddIncomeWindow(tk.Toplevel):
         super().__init__(parent)
 
         self.title("Add Income")
+        self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
         self.geometry("760x640")
         self.minsize(680, 560)
         self.configure(bg=BG)

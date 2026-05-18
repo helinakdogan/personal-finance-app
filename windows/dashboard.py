@@ -50,6 +50,7 @@ class DashboardWindow(tk.Toplevel):
         super().__init__(parent)
 
         self.title("Dashboard")
+        self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
         self.geometry("820x560")
         self.minsize(720, 500)
         self.configure(bg=BG)

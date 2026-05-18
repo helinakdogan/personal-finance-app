@@ -93,6 +93,7 @@ class MainApp(tk.Tk):
         super().__init__()
 
         self.title(APP_NAME)
+        self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
         self.geometry("960x640")
         self.minsize(840, 580)
         self.configure(bg=BG)

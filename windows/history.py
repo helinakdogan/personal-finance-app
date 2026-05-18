@@ -116,6 +116,7 @@ class HistoryWindow(tk.Toplevel):
         super().__init__(parent)
 
         self.title("Transaction History")
+        self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
         self.geometry("920x620")
         self.minsize(760, 520)
         self.configure(bg=BG)
