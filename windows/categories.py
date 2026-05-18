@@ -3,13 +3,101 @@ from tkinter import ttk
 from tkinter import messagebox as msg
 
 
-class CategoriesWindow(tk.Toplevel):
+BG = "#FFFFFF"
+SURFACE = "#FFFFFF"
+TEXT = "#0F172A"
+MUTED = "#64748B"
+INPUT = "#F3F6FA"
+INPUT_HOVER = "#EEF2F7"
+BLUE = "#60A5FA"
 
+FONT = "Inter"
+
+
+class SelectBox(tk.Frame):
+    def __init__(self, parent, variable, values=None):
+        super().__init__(parent, bg=INPUT, cursor="hand2")
+        self.variable = variable
+        self.values = values or []
+        self.menu = None
+
+        self.label = tk.Label(
+            self,
+            textvariable=self.variable,
+            bg=INPUT,
+            fg=TEXT,
+            font=(FONT, 11),
+            anchor="w",
+            padx=16,
+            pady=12,
+            cursor="hand2"
+        )
+        self.label.pack(side="left", fill="x", expand=True)
+
+        self.arrow = tk.Label(
+            self,
+            text="⌄",
+            bg=INPUT,
+            fg=MUTED,
+            font=(FONT, 14),
+            padx=16,
+            cursor="hand2"
+        )
+        self.arrow.pack(side="right")
+
+        for widget in (self, self.label, self.arrow):
+            widget.bind("<Button-1>", self.open_menu)
+
+    def open_menu(self, event=None):
+        if self.menu and self.menu.winfo_exists():
+            self.menu.destroy()
+            return
+
+        self.menu = tk.Toplevel(self)
+        self.menu.overrideredirect(True)
+        self.menu.configure(bg=SURFACE)
+
+        x = self.winfo_rootx()
+        y = self.winfo_rooty() + self.winfo_height() + 4
+        width = self.winfo_width()
+        height = max(44, len(self.values) * 42)
+
+        self.menu.geometry(f"{width}x{height}+{x}+{y}")
+
+        for value in self.values:
+            item = tk.Label(
+                self.menu,
+                text=value,
+                bg=SURFACE,
+                fg=TEXT,
+                font=(FONT, 10),
+                anchor="w",
+                padx=16,
+                pady=12,
+                cursor="hand2"
+            )
+            item.pack(fill="x")
+            item.bind("<Button-1>", lambda e, v=value: self.select(v))
+            item.bind("<Enter>", lambda e, w=item: w.configure(bg=INPUT))
+            item.bind("<Leave>", lambda e, w=item: w.configure(bg=SURFACE))
+
+        self.menu.lift()
+
+    def select(self, value):
+        self.variable.set(value)
+
+        if self.menu and self.menu.winfo_exists():
+            self.menu.destroy()
+
+
+class CategoriesWindow(tk.Toplevel):
     def __init__(self, parent, db):
         super().__init__(parent)
+
         self.title("Categories")
-        self.geometry("340x400")
-        self.resizable(False, False)
+        self.geometry("760x620")
+        self.minsize(680, 520)
+        self.configure(bg=BG)
 
         self.db = db
 
@@ -20,60 +108,221 @@ class CategoriesWindow(tk.Toplevel):
         self.load_categories()
 
     def build_ui(self):
-        frm_add = ttk.LabelFrame(self, text="Add Category")
-        frm_add.pack(fill="x", padx=10, pady=10)
-        frm_add.columnconfigure(0, weight=1, uniform="eq")
-        frm_add.columnconfigure(1, weight=3, uniform="eq")
+        page = tk.Frame(self, bg=BG)
+        page.pack(fill="both", expand=True, padx=58, pady=46)
+        page.grid_columnconfigure(0, weight=1)
+        page.grid_rowconfigure(2, weight=1)
 
-        lbl_pad = {"padx": (10, 5), "pady": 6, "sticky": "e"}
-        ent_pad = {"padx": (5, 10), "pady": 6, "sticky": "ew"}
+        header = tk.Frame(page, bg=BG)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 34))
+        header.grid_columnconfigure(0, weight=1)
 
-        ttk.Label(frm_add, text="Name:").grid(row=0, column=0, **lbl_pad)
-        self.txt_name = ttk.Entry(frm_add, textvariable=self.var_name, width=25)
-        self.txt_name.grid(row=0, column=1, **ent_pad)
+        accent = tk.Frame(header, bg=BLUE, width=10, height=10)
+        accent.grid(row=0, column=0, sticky="w", pady=(0, 14))
+        accent.grid_propagate(False)
 
-        ttk.Label(frm_add, text="Type:").grid(row=1, column=0, **lbl_pad)
-        ttk.Combobox(frm_add, textvariable=self.var_type,
-                     values=["Income", "Expense"], state="readonly", width=23).grid(row=1, column=1, **ent_pad)
+        tk.Label(
+            header,
+            text="Categories",
+            bg=BG,
+            fg=TEXT,
+            font=(FONT, 36, "bold")
+        ).grid(row=1, column=0, sticky="w")
 
-        ttk.Button(frm_add, text="Add", command=self.on_add).grid(
-            row=2, column=0, columnspan=2, sticky="e", padx=10, pady=(0, 8))
+        tk.Label(
+            header,
+            text="Create and manage labels for income sources and expense categories.",
+            bg=BG,
+            fg=MUTED,
+            font=(FONT, 13)
+        ).grid(row=2, column=0, sticky="w", pady=(10, 0))
 
-        frm_list = ttk.LabelFrame(self, text="Categories")
-        frm_list.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        form = tk.Frame(page, bg=SURFACE)
+        form.grid(row=1, column=0, sticky="ew", pady=(0, 34))
+        form.grid_columnconfigure(0, weight=1)
+        form.grid_columnconfigure(1, weight=1)
 
-        self.tv = ttk.Treeview(frm_list, height=10, show="headings")
+        name_area = tk.Frame(form, bg=SURFACE)
+        name_area.grid(row=0, column=0, sticky="ew", padx=(0, 12))
+        name_area.grid_columnconfigure(0, weight=1)
+
+        tk.Label(
+            name_area,
+            text="Category Name*",
+            bg=SURFACE,
+            fg=TEXT,
+            font=(FONT, 11, "bold")
+        ).grid(row=0, column=0, sticky="w", pady=(0, 8))
+
+        name_box = tk.Frame(name_area, bg=INPUT)
+        name_box.grid(row=1, column=0, sticky="ew")
+        name_box.grid_columnconfigure(0, weight=1)
+
+        self.txt_name = tk.Entry(
+            name_box,
+            textvariable=self.var_name,
+            bg=INPUT,
+            fg=TEXT,
+            relief="flat",
+            bd=0,
+            font=(FONT, 12),
+            insertbackground=TEXT
+        )
+        self.txt_name.grid(row=0, column=0, sticky="ew", padx=16, pady=13)
+
+        type_area = tk.Frame(form, bg=SURFACE)
+        type_area.grid(row=0, column=1, sticky="ew", padx=(12, 0))
+        type_area.grid_columnconfigure(0, weight=1)
+
+        tk.Label(
+            type_area,
+            text="Type*",
+            bg=SURFACE,
+            fg=TEXT,
+            font=(FONT, 11, "bold")
+        ).grid(row=0, column=0, sticky="w", pady=(0, 8))
+
+        self.type_select = SelectBox(
+            type_area,
+            self.var_type,
+            values=["Income", "Expense"]
+        )
+        self.type_select.grid(row=1, column=0, sticky="ew")
+
+        add_btn = self.create_button(
+            form,
+            "Add Category",
+            self.on_add,
+            bg=TEXT,
+            fg="#FFFFFF"
+        )
+        add_btn.grid(row=1, column=1, sticky="e", pady=(22, 0))
+
+        list_area = tk.Frame(page, bg=SURFACE)
+        list_area.grid(row=2, column=0, sticky="nsew")
+        list_area.grid_columnconfigure(0, weight=1)
+        list_area.grid_rowconfigure(0, weight=1)
+
+        style = ttk.Style()
+        style.theme_use("default")
+
+        style.layout("Flowance.Category.Treeview", [
+            ("Flowance.Category.Treeview.treearea", {"sticky": "nswe"})
+        ])
+
+        style.configure(
+            "Flowance.Category.Treeview",
+            font=(FONT, 10),
+            rowheight=34,
+            background=SURFACE,
+            fieldbackground=SURFACE,
+            foreground=TEXT,
+            borderwidth=0,
+            relief="flat"
+        )
+
+        style.configure(
+            "Flowance.Category.Treeview.Heading",
+            font=(FONT, 10, "bold"),
+            background=SURFACE,
+            foreground=MUTED,
+            borderwidth=0,
+            relief="flat"
+        )
+
+        style.map(
+            "Flowance.Category.Treeview",
+            background=[("selected", INPUT)],
+            foreground=[("selected", TEXT)]
+        )
+
+        self.tv = ttk.Treeview(
+            list_area,
+            height=10,
+            show="headings",
+            style="Flowance.Category.Treeview"
+        )
+
         self.tv["columns"] = ("name", "type")
         self.tv["selectmode"] = "browse"
 
-        self.tv.heading("name", text="Category Name", anchor="w")
-        self.tv.heading("type", text="Type",          anchor="center")
+        columns = {
+            "name": ("Category Name", 420, "w"),
+            "type": ("Type", 180, "w"),
+        }
 
-        self.tv.column("name", width=180, anchor="w")
-        self.tv.column("type", width=90,  anchor="center")
+        for key, (label, width, anchor) in columns.items():
+            self.tv.heading(key, text=label, anchor="w")
+            self.tv.column(key, width=width, anchor=anchor, stretch=True)
 
-        self.tv.pack(fill="both", expand=True, padx=5, pady=5)
+        self.tv.grid(row=0, column=0, sticky="nsew")
 
-        self.btn_delete = ttk.Button(frm_list, text="Delete", state="disabled", command=self.on_delete)
-        self.btn_delete.pack(side="right", padx=5, pady=(0, 5))
+        bottom = tk.Frame(page, bg=BG)
+        bottom.grid(row=3, column=0, sticky="ew", pady=(24, 0))
+        bottom.grid_columnconfigure(0, weight=1)
+
+        tk.Label(
+            bottom,
+            text="Select a category to delete it.",
+            bg=BG,
+            fg=MUTED,
+            font=(FONT, 10)
+        ).grid(row=0, column=0, sticky="w")
+
+        self.btn_delete = self.create_button(
+            bottom,
+            "Delete",
+            self.on_delete,
+            bg=TEXT,
+            fg="#FFFFFF",
+            disabled=True
+        )
+        self.btn_delete.grid(row=0, column=1, sticky="e")
 
         self.tv.bind("<<TreeviewSelect>>", self.on_item_select)
         self.tv.bind("<Delete>", self.on_delete)
 
         self.txt_name.focus_set()
 
+    def create_button(self, parent, text, command, bg, fg, disabled=False):
+        btn = tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg=bg,
+            fg=fg,
+            activebackground="#1E293B" if fg == "#FFFFFF" else INPUT_HOVER,
+            activeforeground=fg,
+            relief="flat",
+            bd=0,
+            padx=24,
+            pady=12,
+            font=(FONT, 10, "bold"),
+            cursor="hand2"
+        )
+
+        if disabled:
+            btn.configure(state="disabled")
+
+        return btn
+
     def load_categories(self):
         for item in self.tv.get_children():
             self.tv.delete(item)
 
-        for c in self.db.get_categories():
-            self.tv.insert(parent="", index="end", iid=c[0], values=(c[1], c[2]))
+        for category in self.db.get_categories():
+            self.tv.insert(
+                parent="",
+                index="end",
+                iid=category[0],
+                values=(category[1], category[2])
+            )
 
-    def on_item_select(self, event):
-        if self.tv.selection():
-            self.btn_delete.configure(state="normal")
-        else:
-            self.btn_delete.configure(state="disabled")
+        self.btn_delete.configure(state="disabled")
+
+    def on_item_select(self, event=None):
+        state = "normal" if self.tv.selection() else "disabled"
+        self.btn_delete.configure(state=state)
 
     def on_add(self):
         name = self.var_name.get().strip()
@@ -92,12 +341,18 @@ class CategoriesWindow(tk.Toplevel):
             msg.showwarning("Validation Error", str(e), parent=self)
 
     def on_delete(self, event=None):
-        if not self.tv.selection():
+        selection = self.tv.selection()
+        if not selection:
             return
 
         answer = msg.askyesno("Confirm Delete", "Delete this category?", parent=self)
+
         if answer:
-            for iid in self.tv.selection():
-                self.db.delete_category(int(iid))
-                self.tv.delete(iid)
+            for iid in selection:
+                try:
+                    self.db.delete_category(int(iid))
+                    self.tv.delete(iid)
+                except ValueError as e:
+                    msg.showwarning("Delete Error", str(e), parent=self)
+
             self.btn_delete.configure(state="disabled")
