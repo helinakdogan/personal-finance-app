@@ -25,8 +25,8 @@ class ReportsWindow(tk.Toplevel):
         super().__init__(parent)
 
         self.title("Reports")
-        self.geometry("960x660")
-        self.minsize(820, 560)
+        self.geometry("1100x780")
+        self.minsize(920, 640)
         self.configure(bg=BG)
 
         self.db = db

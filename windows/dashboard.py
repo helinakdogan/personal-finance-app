@@ -51,8 +51,8 @@ class DashboardWindow(tk.Toplevel):
 
         self.title("Dashboard")
         self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
-        self.geometry("820x560")
-        self.minsize(720, 500)
+        self.geometry("980x680")
+        self.minsize(820, 580)
         self.configure(bg=BG)
 
         self.db = db
@@ -152,11 +152,6 @@ class DashboardWindow(tk.Toplevel):
 
         style = ttk.Style()
 
-        style.layout("Flowance.Treeview", [
-        ("Flowance.Treeview.treearea", {"sticky": "nswe"})
-        ])
-        
-        
         style.configure(
             "Flowance.Treeview",
             font=(FONT, 10),

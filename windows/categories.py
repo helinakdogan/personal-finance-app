@@ -14,90 +14,14 @@ BLUE = "#60A5FA"
 FONT = "Inter"
 
 
-class SelectBox(tk.Frame):
-    def __init__(self, parent, variable, values=None):
-        super().__init__(parent, bg=INPUT, cursor="hand2")
-        self.variable = variable
-        self.values = values or []
-        self.menu = None
-
-        self.label = tk.Label(
-            self,
-            textvariable=self.variable,
-            bg=INPUT,
-            fg=TEXT,
-            font=(FONT, 11),
-            anchor="w",
-            padx=16,
-            pady=12,
-            cursor="hand2"
-        )
-        self.label.pack(side="left", fill="x", expand=True)
-
-        self.arrow = tk.Label(
-            self,
-            text="⌄",
-            bg=INPUT,
-            fg=MUTED,
-            font=(FONT, 14),
-            padx=16,
-            cursor="hand2"
-        )
-        self.arrow.pack(side="right")
-
-        for widget in (self, self.label, self.arrow):
-            widget.bind("<Button-1>", self.open_menu)
-
-    def open_menu(self, event=None):
-        if self.menu and self.menu.winfo_exists():
-            self.menu.destroy()
-            return
-
-        self.menu = tk.Toplevel(self)
-        self.menu.overrideredirect(True)
-        self.menu.configure(bg=SURFACE)
-
-        x = self.winfo_rootx()
-        y = self.winfo_rooty() + self.winfo_height() + 4
-        width = self.winfo_width()
-        height = max(44, len(self.values) * 42)
-
-        self.menu.geometry(f"{width}x{height}+{x}+{y}")
-
-        for value in self.values:
-            item = tk.Label(
-                self.menu,
-                text=value,
-                bg=SURFACE,
-                fg=TEXT,
-                font=(FONT, 10),
-                anchor="w",
-                padx=16,
-                pady=12,
-                cursor="hand2"
-            )
-            item.pack(fill="x")
-            item.bind("<Button-1>", lambda e, v=value: self.select(v))
-            item.bind("<Enter>", lambda e, w=item: w.configure(bg=INPUT))
-            item.bind("<Leave>", lambda e, w=item: w.configure(bg=SURFACE))
-
-        self.menu.lift()
-
-    def select(self, value):
-        self.variable.set(value)
-
-        if self.menu and self.menu.winfo_exists():
-            self.menu.destroy()
-
-
 class CategoriesWindow(tk.Toplevel):
     def __init__(self, parent, db):
         super().__init__(parent)
 
         self.title("Categories")
         self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
-        self.geometry("760x620")
-        self.minsize(680, 520)
+        self.geometry("880x720")
+        self.minsize(760, 600)
         self.configure(bg=BG)
 
         self.db = db
@@ -183,12 +107,14 @@ class CategoriesWindow(tk.Toplevel):
             font=(FONT, 11, "bold")
         ).grid(row=0, column=0, sticky="w", pady=(0, 8))
 
-        self.type_select = SelectBox(
+        self.type_select = ttk.Combobox(
             type_area,
-            self.var_type,
-            values=["Income", "Expense"]
+            textvariable=self.var_type,
+            values=["Income", "Expense"],
+            state="readonly",
+            font=(FONT, 11)
         )
-        self.type_select.grid(row=1, column=0, sticky="ew")
+        self.type_select.grid(row=1, column=0, sticky="ew", ipady=6)
 
         add_btn = self.create_button(
             form,
@@ -206,10 +132,6 @@ class CategoriesWindow(tk.Toplevel):
 
         style = ttk.Style()
         style.theme_use("default")
-
-        style.layout("Flowance.Category.Treeview", [
-            ("Flowance.Category.Treeview.treearea", {"sticky": "nswe"})
-        ])
 
         style.configure(
             "Flowance.Category.Treeview",

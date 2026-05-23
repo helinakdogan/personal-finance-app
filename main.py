@@ -94,8 +94,8 @@ class MainApp(tk.Tk):
 
         self.title(APP_NAME)
         self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
-        self.geometry("960x640")
-        self.minsize(840, 580)
+        self.geometry("1100x740")
+        self.minsize(920, 640)
         self.configure(bg=BG)
 
         self.db = FinanceDatabase()

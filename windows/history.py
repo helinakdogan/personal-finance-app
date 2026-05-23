@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as msg
-from datetime import datetime
 
 from validators import TransactionValidator, ValidationError
 
@@ -17,108 +16,14 @@ SLATE = "#94A3B8"
 FONT = "Inter"
 
 
-def db_date_to_ui(value):
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").strftime("%m.%d.%Y")
-    except Exception:
-        return value
-
-
-def ui_date_to_db(value):
-    return datetime.strptime(value, "%m.%d.%Y").strftime("%Y-%m-%d")
-
-
-class SelectBox(tk.Frame):
-    def __init__(self, parent, variable, values=None, on_select=None):
-        super().__init__(parent, bg=INPUT, cursor="hand2")
-        self.variable = variable
-        self.values = values or []
-        self.on_select = on_select
-        self.menu = None
-
-        self.label = tk.Label(
-            self,
-            textvariable=self.variable,
-            bg=INPUT,
-            fg=TEXT,
-            font=(FONT, 11),
-            anchor="w",
-            padx=16,
-            pady=12,
-            cursor="hand2"
-        )
-        self.label.pack(side="left", fill="x", expand=True)
-
-        self.arrow = tk.Label(
-            self,
-            text="⌄",
-            bg=INPUT,
-            fg=MUTED,
-            font=(FONT, 14),
-            padx=16,
-            cursor="hand2"
-        )
-        self.arrow.pack(side="right")
-
-        for widget in (self, self.label, self.arrow):
-            widget.bind("<Button-1>", self.open_menu)
-
-    def set_values(self, values):
-        self.values = values
-
-    def open_menu(self, event=None):
-        if self.menu and self.menu.winfo_exists():
-            self.menu.destroy()
-            return
-
-        self.menu = tk.Toplevel(self)
-        self.menu.overrideredirect(True)
-        self.menu.configure(bg=SURFACE)
-
-        x = self.winfo_rootx()
-        y = self.winfo_rooty() + self.winfo_height() + 4
-        width = self.winfo_width()
-        height = max(44, len(self.values) * 42)
-
-        self.menu.geometry(f"{width}x{height}+{x}+{y}")
-
-        for value in self.values:
-            item = tk.Label(
-                self.menu,
-                text=value,
-                bg=SURFACE,
-                fg=TEXT,
-                font=(FONT, 10),
-                anchor="w",
-                padx=16,
-                pady=12,
-                cursor="hand2"
-            )
-            item.pack(fill="x")
-            item.bind("<Button-1>", lambda e, v=value: self.select(v))
-            item.bind("<Enter>", lambda e, w=item: w.configure(bg=INPUT))
-            item.bind("<Leave>", lambda e, w=item: w.configure(bg=SURFACE))
-
-        self.menu.lift()
-
-    def select(self, value):
-        self.variable.set(value)
-
-        if self.on_select:
-            self.on_select()
-
-        if self.menu and self.menu.winfo_exists():
-            self.menu.destroy()
-
-
 class HistoryWindow(tk.Toplevel):
     def __init__(self, parent, db):
         super().__init__(parent)
 
         self.title("Transaction History")
         self.iconphoto(True, tk.PhotoImage(file="assets/logo_icon.png"))
-        self.geometry("920x620")
-        self.minsize(760, 520)
+        self.geometry("1080x720")
+        self.minsize(880, 600)
         self.configure(bg=BG)
 
         self.db = db
@@ -172,9 +77,6 @@ class HistoryWindow(tk.Toplevel):
 
         style = ttk.Style()
         style.theme_use("default")
-        style.layout("Flowance.Treeview", [
-            ("Flowance.Treeview.treearea", {"sticky": "nswe"})
-        ])
 
         style.configure(
             "Flowance.Treeview",
@@ -290,14 +192,12 @@ class HistoryWindow(tk.Toplevel):
             self.tv.delete(item)
 
         for t in self.db.get_transactions():
-            formatted_date = db_date_to_ui(t[1])
-
             self.tv.insert(
                 parent="",
                 index="end",
                 iid=t[0],
                 values=(
-                    formatted_date,
+                    t[1],
                     t[2],
                     t[3],
                     f"₺{float(t[4]):.2f}",
@@ -359,8 +259,8 @@ class EditTransactionWindow(tk.Toplevel):
         super().__init__(parent)
 
         self.title("Edit Transaction")
-        self.geometry("520x560")
-        self.minsize(480, 520)
+        self.geometry("600x660")
+        self.minsize(540, 600)
         self.configure(bg=BG)
 
         self.db = db
@@ -405,8 +305,9 @@ class EditTransactionWindow(tk.Toplevel):
         form.grid(row=3, column=0, sticky="ew")
         form.grid_columnconfigure(0, weight=1)
 
-        self.create_input(form, 0, "Date", self.var_date, "MM.DD.YYYY")
-        self.create_select(form, 1, "Type", self.var_type, ["Income", "Expense"], self.on_type_change)
+        self.create_input(form, 0, "Date", self.var_date, "YYYY-MM-DD")
+        self.cmb_type = self.create_select(form, 1, "Type", self.var_type, ["Income", "Expense"])
+        self.cmb_type.bind("<<ComboboxSelected>>", self.on_type_change)
         self.cmb_category = self.create_select(form, 2, "Category", self.var_category, [])
         self.create_input(form, 3, "Amount", self.var_amount)
         self.create_input(form, 4, "Description", self.var_description)
@@ -485,18 +386,19 @@ class EditTransactionWindow(tk.Toplevel):
 
         return entry
 
-    def create_select(self, parent, row, label, variable, values, command=None):
+    def create_select(self, parent, row, label, variable, values):
         wrapper = self.create_field_wrapper(parent, row, label)
 
-        select = SelectBox(
+        combo = ttk.Combobox(
             wrapper,
-            variable=variable,
+            textvariable=variable,
             values=values,
-            on_select=command
+            state="readonly",
+            font=(FONT, 11)
         )
-        select.grid(row=1, column=0, sticky="ew")
+        combo.grid(row=1, column=0, sticky="ew", ipady=5)
 
-        return select
+        return combo
 
     def _refresh_categories(self, event=None):
         current_type = self.var_type.get()
@@ -506,7 +408,7 @@ class EditTransactionWindow(tk.Toplevel):
             if c[2] == current_type:
                 filtered.append(c[1])
 
-        self.cmb_category.set_values(filtered)
+        self.cmb_category["values"] = filtered
 
         if self.var_category.get() not in filtered:
             if filtered:
@@ -519,10 +421,8 @@ class EditTransactionWindow(tk.Toplevel):
 
     def on_update(self):
         try:
-            db_date = ui_date_to_db(self.var_date.get())
-
             clean = TransactionValidator.validate(
-                db_date,
+                self.var_date.get(),
                 self.var_type.get(),
                 self.var_category.get(),
                 self.var_amount.get(),
@@ -550,8 +450,6 @@ class EditTransactionWindow(tk.Toplevel):
 
             self.destroy()
 
-        except ValueError:
-            msg.showwarning("Validation Error", "Date must be in MM.DD.YYYY format.", parent=self)
         except ValidationError as e:
             msg.showwarning("Validation Error", str(e), parent=self)
         except Exception as e:
