@@ -29,17 +29,20 @@ class DatePickerPopup(tk.Toplevel):
         self.on_select = on_select
         self.today_bg = today_bg
 
+        # Open the calendar on the currently entered date; fall back to today if it's unparseable.
         try:
             parsed = datetime.strptime(selected_date, "%m.%d.%Y").date()
         except ValueError:
             parsed = date.today()
 
+        # Track only year+month; the day grid is rebuilt from these on every navigation.
         self.year = parsed.year
         self.month = parsed.month
 
-        self.overrideredirect(True)
+        self.overrideredirect(True)  # Borderless popup so it reads as a dropdown, not a window.
         self.configure(bg=SURFACE)
 
+        # Anchor the popup directly beneath the owning DateInput using screen coordinates.
         x = parent.winfo_rootx()
         y = parent.winfo_rooty() + parent.winfo_height() + 6
         self.geometry(f"260x270+{x}+{y}")
@@ -51,6 +54,7 @@ class DatePickerPopup(tk.Toplevel):
         self.lift()
 
     def render_calendar(self):
+        # Wipe the previous month's widgets so navigating months never stacks old grids.
         for widget in self.container.winfo_children():
             widget.destroy()
 
@@ -108,10 +112,12 @@ class DatePickerPopup(tk.Toplevel):
             ).grid(row=0, column=i, sticky="nsew", pady=(0, 8))
 
         today = date.today()
+        # monthcalendar returns weeks as 7-day lists, with 0 marking days outside this month.
         month_data = calendar.monthcalendar(self.year, self.month)
 
         for row_index, week in enumerate(month_data, start=1):
             for column_index, day in enumerate(week):
+                # A 0 is a padding cell (prev/next month); render an empty placeholder and skip it.
                 if day == 0:
                     tk.Label(days_frame, text="", bg=SURFACE).grid(
                         row=row_index, column=column_index,
@@ -119,6 +125,7 @@ class DatePickerPopup(tk.Toplevel):
                     )
                     continue
 
+                # Highlight today's cell only when the visible month/year matches the real date.
                 is_today = (
                     day == today.day
                     and self.month == today.month
@@ -145,6 +152,7 @@ class DatePickerPopup(tk.Toplevel):
 
     def prev_month(self):
         self.month -= 1
+        # Wrap January back to December of the previous year.
         if self.month == 0:
             self.month = 12
             self.year -= 1
@@ -152,12 +160,14 @@ class DatePickerPopup(tk.Toplevel):
 
     def next_month(self):
         self.month += 1
+        # Wrap December forward to January of the next year.
         if self.month == 13:
             self.month = 1
             self.year += 1
         self.render_calendar()
 
     def select_day(self, day):
+        # Build the MM.DD.YYYY string, hand it back via the callback, and close the popup.
         selected = date(self.year, self.month, day).strftime("%m.%d.%Y")
         self.on_select(selected)
         self.destroy()
@@ -205,8 +215,10 @@ class DateInput(tk.Frame):
         self.button.pack(side="right", padx=(0, 8), pady=7)
 
     def open_picker(self):
+        # Toggle behaviour: a second click while the calendar is open closes it instead of reopening.
         if self.popup and self.popup.winfo_exists():
             self.popup.destroy()
             return
 
+        # Pass variable.set as the callback so a picked day writes straight back into the entry.
         self.popup = DatePickerPopup(self, self.variable.get(), self.variable.set, today_bg=self.today_bg)
