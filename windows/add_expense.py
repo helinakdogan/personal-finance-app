@@ -43,12 +43,13 @@ class AddExpenseWindow(tk.Toplevel):
 
         self.db = db
 
+        # Form fields are held in StringVars; the date defaults to today in display format.
         self.var_amount = tk.StringVar()
         self.var_category = tk.StringVar()
         self.var_date = tk.StringVar(value=date.today().strftime("%m.%d.%Y"))
         self.var_description = tk.StringVar()
 
-        self.categories = []
+        self.categories = []  # Cached (id, name, type) rows; needed to map a name back to its id on save.
 
         self.build_ui()
         self.load_categories()
@@ -187,11 +188,13 @@ class AddExpenseWindow(tk.Toplevel):
 
     def load_categories(self):
         """Populate the category dropdown with all Expense-type categories."""
+        # Keep only Expense-type categories (index 2) since this is the expense form.
         self.categories = [c for c in self.db.get_categories() if c[2] == "Expense"]
         names = [c[1] for c in self.categories]
 
         self.category_box.set_values(names)
 
+        # Preselect the first option, or show a placeholder when no categories exist yet.
         if names:
             self.var_category.set(names[0])
         else:
@@ -199,6 +202,7 @@ class AddExpenseWindow(tk.Toplevel):
 
     def convert_date_for_db(self, value):
         """Convert a user-facing MM.DD.YYYY date string to the database YYYY-MM-DD format."""
+        # strptime parses the displayed format; strftime re-emits it in the format the DB expects.
         parsed = datetime.strptime(value, "%m.%d.%Y")
         return parsed.strftime("%Y-%m-%d")
 
@@ -216,6 +220,7 @@ class AddExpenseWindow(tk.Toplevel):
         try:
             db_date = self.convert_date_for_db(self.var_date.get())
 
+            # Validate first; type is hard-coded to "Expense" because this is the expense form.
             clean = TransactionValidator.validate(
                 db_date,
                 "Expense",
@@ -224,6 +229,7 @@ class AddExpenseWindow(tk.Toplevel):
                 self.var_description.get(),
             )
 
+            # Resolve the validated category name (clean[2]) to its DB id for the foreign key.
             category_id = None
             for c in self.categories:
                 if c[1] == clean[2]:
@@ -234,10 +240,12 @@ class AddExpenseWindow(tk.Toplevel):
                 msg.showwarning("Validation Error", "Selected category was not found.", parent=self)
                 return
 
+            # Persist the record, confirm to the user, then reset the form for the next entry.
             self.db.add_transaction(clean[0], clean[1], category_id, clean[3], clean[4])
             msg.showinfo("Success", "Expense added successfully.", parent=self)
             self.clear_form()
 
+        # ValueError = bad date format; ValidationError = a failed rule; last catch = anything else.
         except ValueError:
             msg.showwarning("Validation Error", "Date must be in MM.DD.YYYY format.", parent=self)
         except ValidationError as e:
