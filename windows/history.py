@@ -24,6 +24,8 @@ BG = SURFACE
 
 
 def db_date_to_ui(value):
+    # Convert stored YYYY-MM-DD into the MM.DD.YYYY shown to the user.
+    # On any unexpected value we return it unchanged rather than crashing the table render.
     try:
         return datetime.strptime(value, "%Y-%m-%d").strftime("%m.%d.%Y")
     except Exception:
@@ -31,6 +33,7 @@ def db_date_to_ui(value):
 
 
 def ui_date_to_db(value):
+    # Reverse of db_date_to_ui: turn the displayed MM.DD.YYYY back into the DB's YYYY-MM-DD.
     return datetime.strptime(value, "%m.%d.%Y").strftime("%Y-%m-%d")
 
 
@@ -237,6 +240,8 @@ class HistoryWindow(tk.Toplevel):
         for t in self.db.get_transactions():
             formatted_date = db_date_to_ui(t[1])
 
+            # Use the transaction's DB id as the row iid so edit/delete can map a row back
+            # to its database record without a separate lookup.
             self.tv.insert(
                 parent="",
                 index="end",
@@ -255,6 +260,7 @@ class HistoryWindow(tk.Toplevel):
 
     def on_item_select(self, event=None):
         """Enable the Edit and Delete buttons when a row is selected."""
+        # Edit/Delete only make sense with a selected row, so mirror the button state to it.
         state = "normal" if self.tv.selection() else "disabled"
         self.btn_edit.configure(state=state)
         self.btn_delete.configure(state=state)
@@ -284,6 +290,8 @@ class HistoryWindow(tk.Toplevel):
         iid = selection[0]
         values = self.tv.item(iid)["values"]
 
+        # The amount cell is displayed as "₺1,200.00"; strip the symbol and separators
+        # so the edit form receives a plain numeric string the validator can parse.
         amount = str(values[3]).replace("₺", "").replace(",", "").strip()
 
         edit_win = EditTransactionWindow(
@@ -297,6 +305,8 @@ class HistoryWindow(tk.Toplevel):
             description=values[4],
         )
 
+        # grab_set makes the editor modal; wait_window blocks here until it closes, then we
+        # reload so the ledger reflects whatever was saved.
         edit_win.grab_set()
         self.wait_window(edit_win)
         self.load_transactions()
@@ -482,6 +492,7 @@ class EditTransactionWindow(tk.Toplevel):
         """Filter the category dropdown to match the currently selected transaction type."""
         current_type = self.var_type.get()
 
+        # Show only categories matching the chosen type (index 2 is the type, index 1 is the name).
         filtered = []
         for c in self._categories:
             if c[2] == current_type:
@@ -489,6 +500,8 @@ class EditTransactionWindow(tk.Toplevel):
 
         self.cmb_category.set_values(filtered)
 
+        # If the previously selected category no longer fits the new type, fall back to the
+        # first valid option (or clear it when none exist).
         if self.var_category.get() not in filtered:
             if filtered:
                 self.var_category.set(filtered[0])
@@ -502,6 +515,7 @@ class EditTransactionWindow(tk.Toplevel):
     def on_update(self):
         """Validate the edited fields and write the updated record to the database."""
         try:
+            # Convert the displayed date to DB format, then run all business-rule checks.
             db_date = ui_date_to_db(self.var_date.get())
 
             clean = TransactionValidator.validate(
@@ -512,6 +526,7 @@ class EditTransactionWindow(tk.Toplevel):
                 self.var_description.get(),
             )
 
+            # The DB stores category_id, not its name, so resolve the selected name back to its id.
             category_id = None
             for c in self._categories:
                 if c[1] == self.var_category.get():
@@ -533,6 +548,8 @@ class EditTransactionWindow(tk.Toplevel):
 
             self.destroy()
 
+        # ValueError comes from ui_date_to_db on a bad date; ValidationError from the validator;
+        # the final catch-all reports any unforeseen failure without crashing the app.
         except ValueError:
             msg.showwarning("Validation Error", "Date must be in MM.DD.YYYY format.", parent=self)
         except ValidationError as e:
