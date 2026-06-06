@@ -24,10 +24,10 @@ class SelectBox(tk.Frame):
     def __init__(self, parent, variable, values=None, on_select=None, empty_text="No options"):
         super().__init__(parent, bg=INPUT, cursor="hand2")
         self.variable = variable
-        self.values = values or []
+        self.values = values or []  # `or []` guards against a None default becoming a crash later.
         self.on_select = on_select
         self.empty_text = empty_text
-        self.menu = None
+        self.menu = None  # Holds the open dropdown Toplevel; None means the menu is currently closed.
 
         self.label = tk.Label(
             self,
@@ -53,6 +53,7 @@ class SelectBox(tk.Frame):
         )
         self.arrow.pack(side="right")
 
+        # Bind on every child too so a click or hover anywhere on the box behaves as one widget.
         for widget in (self, self.label, self.arrow):
             widget.bind("<Button-1>", self.open_menu)
             widget.bind("<Enter>", self.on_enter)
@@ -72,18 +73,21 @@ class SelectBox(tk.Frame):
         self.arrow.configure(bg=INPUT)
 
     def open_menu(self, event=None):
+        # Clicking while the menu is open acts as a toggle: close it and stop.
         if self.menu and self.menu.winfo_exists():
             self.menu.destroy()
             return
 
+        # overrideredirect(True) removes the window border so the menu looks like a flat panel.
         self.menu = tk.Toplevel(self)
         self.menu.overrideredirect(True)
         self.menu.configure(bg=SURFACE)
 
+        # Position the menu just below the box, matched to its width; rootx/rooty are screen coords.
         x = self.winfo_rootx()
         y = self.winfo_rooty() + self.winfo_height() + 4
         width = self.winfo_width()
-        height = max(46, len(self.values) * 44)
+        height = max(46, len(self.values) * 44)  # ~44px per item, with a floor for the empty state.
 
         self.menu.geometry(f"{width}x{height}+{x}+{y}")
 
@@ -113,6 +117,8 @@ class SelectBox(tk.Frame):
                 cursor="hand2"
             )
             item.pack(fill="x")
+            # Default-argument binding (v=value, w=item) captures the current loop value;
+            # without it every row's lambda would close over the final value instead.
             item.bind("<Button-1>", lambda e, v=value: self.select(v))
             item.bind("<Enter>", lambda e, w=item: w.configure(bg=INPUT))
             item.bind("<Leave>", lambda e, w=item: w.configure(bg=SURFACE))
@@ -120,6 +126,7 @@ class SelectBox(tk.Frame):
         self.menu.lift()
 
     def select(self, value):
+        # Write the choice into the bound variable, fire the optional callback, then close.
         self.variable.set(value)
         if self.on_select:
             self.on_select()
