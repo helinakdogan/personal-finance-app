@@ -40,14 +40,17 @@ class MainApp(tk.Tk):
         self.minsize(840, 580)
         self.configure(bg=BG)
 
+        # Open the database and ensure schema + default categories exist before any window needs them.
         self.db = FinanceDatabase()
         self.db.create_tables()
 
+        # Registry keyed by window name; lets _open_window guarantee one instance per feature.
         self._windows = {}
         self.build_ui()
 
     def build_ui(self):
         """Construct the logo header and the six-card navigation grid."""
+        # Make the single root cell stretch so the page frame fills the window on resize.
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -111,9 +114,11 @@ class MainApp(tk.Tk):
 
         grid = tk.Frame(page, bg=BG)
         grid.grid(row=1, column=0, sticky="nsew")
+        # uniform="cards" forces all three columns to equal width so the cards line up evenly.
         for i in range(3):
             grid.grid_columnconfigure(i, weight=1, uniform="cards")
 
+        # Single source of truth for the nav cards: (title, subtitle, accent colour, click handler).
         actions = [
             ("Dashboard", "See balance, totals and recent activity.", BLUE, self.open_dashboard),
             ("Add Expense", "Record spending with category and note.", PINK, self.open_add_expense),
@@ -125,6 +130,7 @@ class MainApp(tk.Tk):
 
         for index, (title, subtitle, accent, command) in enumerate(actions):
             card = ActionCard(grid, title, subtitle, accent, command)
+            # Lay out 3 cards per row: integer division picks the row, modulo picks the column.
             card.grid(
                 row=index // 3,
                 column=index % 3,
@@ -144,11 +150,14 @@ class MainApp(tk.Tk):
         window_class : type
             The Toplevel subclass to instantiate when no existing window is found.
         """
+        # If a window of this type is already open, bring it to front instead of opening a duplicate.
+        # winfo_exists() guards against a stale reference left behind after the user closed it.
         if key in self._windows and self._windows[key].winfo_exists():
             self._windows[key].lift()
             self._windows[key].focus_set()
             return
 
+        # No live window for this key: create one and remember it in the registry.
         self._windows[key] = window_class(self, self.db)
 
     def open_dashboard(self):
