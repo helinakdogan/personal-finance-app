@@ -32,6 +32,8 @@ class FinanceDatabase:
         conn = self.get_connection()
         cur = conn.cursor()
 
+        # UNIQUE(name, type) lets the same label exist once per type (e.g. an Income "Other"
+        # and an Expense "Other") while blocking exact duplicates.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS categories (
                 id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,6 +43,7 @@ class FinanceDatabase:
             )
         """)
 
+        # FOREIGN KEY ties each transaction to a category; delete_category relies on this link.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,6 +65,8 @@ class FinanceDatabase:
             ("Shopping",  "Expense"),
         ]
 
+        # INSERT OR IGNORE skips any default that already exists, so re-running on every
+        # startup never creates duplicates and never errors on the UNIQUE constraint.
         for name, type_ in default_categories:
             cur.execute(
                 "INSERT OR IGNORE INTO categories (name, type) VALUES (?, ?)",
@@ -100,6 +105,8 @@ class FinanceDatabase:
                 (name.strip(), type_)
             )
             conn.commit()
+        # The UNIQUE(name, type) index throws IntegrityError on a duplicate; convert it to a
+        # ValueError so the UI layer can show a friendly warning instead of crashing.
         except sqlite3.IntegrityError:
             raise ValueError(
                 f'A "{type_}" category named "{name}" already exists.'
@@ -116,6 +123,8 @@ class FinanceDatabase:
         conn = self.get_connection()
         cur = conn.cursor()
 
+        # Count transactions pointing at this category first; deleting a referenced category
+        # would orphan those rows and break the foreign-key relationship.
         cur.execute(
             "SELECT COUNT(*) FROM transactions WHERE category_id = ?",
             (category_id,)
@@ -138,6 +147,7 @@ class FinanceDatabase:
         conn = self.get_connection()
         cur = conn.cursor()
 
+        # Parameterised query (the ? placeholders) prevents SQL injection from user input.
         cur.execute("""
             INSERT INTO transactions (date, type, category_id, amount, description)
             VALUES (?, ?, ?, ?, ?)
@@ -155,6 +165,8 @@ class FinanceDatabase:
         conn = self.get_connection()
         cur = conn.cursor()
 
+        # JOIN resolves category_id to its readable name so the UI never has to look it up.
+        # COALESCE turns a NULL description into an empty string for safe display.
         cur.execute("""
             SELECT
                 t.id,
