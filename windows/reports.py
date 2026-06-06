@@ -42,8 +42,8 @@ class ReportsWindow(tk.Toplevel):
         self.configure(bg=BG)
 
         self.db = db
-        self.active_tab = tk.StringVar(value="category")
-        self.chart_canvas = None
+        self.active_tab = tk.StringVar(value="category")  # Which chart is shown; starts on the pie view.
+        self.chart_canvas = None  # Holds the current Matplotlib canvas so it can be cleared on redraw.
 
         self.build_ui()
         self.draw_charts()
@@ -175,6 +175,7 @@ class ReportsWindow(tk.Toplevel):
 
     def draw_charts(self):
         """Dispatch to the appropriate chart method based on the active tab."""
+        # One entry point for both tabs and the Refresh button; routes to the right chart.
         if self.active_tab.get() == "category":
             self.draw_pie_chart()
         else:
@@ -218,12 +219,14 @@ class ReportsWindow(tk.Toplevel):
         self.clear_chart()
 
         transactions = self.db.get_transactions()
-        expenses = [t for t in transactions if t[2] == "Expense"]
+        expenses = [t for t in transactions if t[2] == "Expense"]  # Pie shows expenses only.
 
+        # Accumulate spending per category name (index 3); .get(..., 0) seeds new keys at zero.
         totals = {}
         for t in expenses:
             totals[t[3]] = totals.get(t[3], 0) + float(t[4])
 
+        # No expenses means nothing to plot, so show a friendly placeholder instead of an empty chart.
         if not totals:
             self.show_empty_state(
                 "No expense data yet",
@@ -235,6 +238,7 @@ class ReportsWindow(tk.Toplevel):
         ax = fig.add_subplot(111)
         self.style_figure(fig, ax)
 
+        # Slice colours from the theme palette; [:len(totals)] takes only as many as we need.
         colors = [PINK, PURPLE, CYAN, GREEN, SLATE, "#C4B5FD", "#BAE6FD", "#FBCFE8"]
 
         wedges, texts, autotexts = ax.pie(
@@ -255,6 +259,7 @@ class ReportsWindow(tk.Toplevel):
         ax.axis("equal")
         fig.tight_layout()
 
+        # Embed the Matplotlib figure into the Tk frame and keep a reference for the next clear_chart.
         canvas = FigureCanvasTkAgg(fig, master=self.chart_container)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
@@ -267,6 +272,7 @@ class ReportsWindow(tk.Toplevel):
 
         transactions = self.db.get_transactions()
 
+        # Group totals by month: key is "YYYY-MM", value holds running Income and Expense sums.
         monthly = {}
         for t in transactions:
             month = t[1][:7]  # YYYY-MM key extracted from the full YYYY-MM-DD date
@@ -274,6 +280,7 @@ class ReportsWindow(tk.Toplevel):
             if month not in monthly:
                 monthly[month] = {"Income": 0.0, "Expense": 0.0}
 
+            # t[2] is the type, so it doubles as the dict key we add this amount to.
             monthly[month][t[2]] += float(t[4])
 
         if not monthly:
@@ -283,6 +290,7 @@ class ReportsWindow(tk.Toplevel):
             )
             return
 
+        # Sort the YYYY-MM keys so the x-axis runs chronologically; build parallel value lists.
         months = sorted(monthly.keys())
         incomes = [monthly[m]["Income"] for m in months]
         expenses = [monthly[m]["Expense"] for m in months]
@@ -294,6 +302,7 @@ class ReportsWindow(tk.Toplevel):
         x = list(range(len(months)))
         width = 0.35
 
+        # Offset the two bars by half a width each so income and expense sit side by side per month.
         ax.bar([i - width / 2 for i in x], incomes,  width, label="Income",  color=GREEN)
         ax.bar([i + width / 2 for i in x], expenses, width, label="Expense", color=PINK)
 
