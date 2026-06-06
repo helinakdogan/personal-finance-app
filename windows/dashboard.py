@@ -1,51 +1,30 @@
+"""Dashboard window — at-a-glance financial summary.
+
+Displays total income, total expenses, and current balance via SummaryCards,
+followed by the five most recent transactions in a read-only Treeview.
+All figures are recalculated on demand when the Refresh button is pressed.
+"""
+
 import tkinter as tk
 from tkinter import ttk
 
-
-BG = "#F8FAFC"
-SURFACE = "#FFFFFF"
-TEXT = "#0F172A"
-MUTED = "#64748B"
-SOFT = "#F1F5F9"
-
-BLUE = "#60A5FA"
-CYAN = "#7DD3FC"
-PURPLE = "#818CF8"
-PINK = "#F9A8D4"
-
-FONT = "Inter"
-
-
-class SummaryCard(tk.Frame):
-    def __init__(self, parent, label, value_var, accent):
-        super().__init__(parent, bg=SURFACE, padx=22, pady=18)
-
-        self.dot = tk.Frame(self, bg=accent, width=9, height=9)
-        self.dot.grid(row=0, column=0, sticky="w", pady=(0, 16))
-        self.dot.grid_propagate(False)
-
-        tk.Label(
-            self,
-            text=label,
-            bg=SURFACE,
-            fg=MUTED,
-            font=(FONT, 10),
-            anchor="w"
-        ).grid(row=1, column=0, sticky="w")
-
-        tk.Label(
-            self,
-            textvariable=value_var,
-            bg=SURFACE,
-            fg=TEXT,
-            font=(FONT, 20, "bold"),
-            anchor="w"
-        ).grid(row=2, column=0, sticky="w", pady=(6, 0))
-
-        self.grid_columnconfigure(0, weight=1)
+from windows.custom_components import SummaryCard
+from windows.custom_components.theme import (
+    BG_PAGE as BG, SURFACE, TEXT, MUTED, SOFT, CYAN, PURPLE, PINK, FONT
+)
 
 
 class DashboardWindow(tk.Toplevel):
+    """Read-only summary screen showing financial totals and recent transactions.
+
+    Parameters
+    ----------
+    parent : tk.Tk
+        The root application window.
+    db : FinanceDatabase
+        The shared database instance used to fetch transaction data.
+    """
+
     def __init__(self, parent, db):
         super().__init__(parent)
 
@@ -65,6 +44,7 @@ class DashboardWindow(tk.Toplevel):
         self.load_data()
 
     def build_ui(self):
+        """Construct the header, three SummaryCards, and the recent-transactions table."""
         page = tk.Frame(self, bg=BG)
         page.pack(fill="both", expand=True, padx=42, pady=34)
 
@@ -153,10 +133,9 @@ class DashboardWindow(tk.Toplevel):
         style = ttk.Style()
 
         style.layout("Flowance.Treeview", [
-        ("Flowance.Treeview.treearea", {"sticky": "nswe"})
+            ("Flowance.Treeview.treearea", {"sticky": "nswe"})
         ])
-        
-        
+
         style.configure(
             "Flowance.Treeview",
             font=(FONT, 10),
@@ -199,10 +178,11 @@ class DashboardWindow(tk.Toplevel):
         for column, (label, width, anchor) in headings.items():
             self.tv.heading(column, text=label, anchor="w")
             self.tv.column(column, width=width, anchor=anchor, stretch=True)
-    
+
         self.tv.grid(row=0, column=0, sticky="nsew")
 
     def load_data(self):
+        """Fetch all transactions, compute totals, and populate the summary cards and table."""
         transactions = self.db.get_transactions()
 
         total_income = 0

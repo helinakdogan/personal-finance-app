@@ -1,26 +1,38 @@
+"""Reports window — visual analysis of income and expenses.
+
+Two chart views are available, selectable via tab buttons:
+  - Expenses by Category: a pie chart showing the share of each expense label.
+  - Monthly Overview: a grouped bar chart comparing income and expenses per month.
+
+Matplotlib figures are rendered inside a FigureCanvasTkAgg widget embedded
+directly in the Tkinter layout.  Switching tabs destroys the previous canvas
+and draws a fresh figure.
+"""
+
 import tkinter as tk
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+from windows.custom_components.theme import (
+    SURFACE, TEXT, MUTED, INPUT, INPUT_HOVER,
+    PURPLE, CYAN, PINK, GREEN, SLATE, FONT
+)
 
-BG = "#FFFFFF"
-SURFACE = "#FFFFFF"
-TEXT = "#0F172A"
-MUTED = "#64748B"
-INPUT = "#F3F6FA"
-INPUT_HOVER = "#EEF2F7"
-
-PURPLE = "#818CF8"
-CYAN = "#7DD3FC"
-PINK = "#F9A8D4"
-GREEN = "#7DD3A8"
-SLATE = "#94A3B8"
-
-FONT = "Inter"
+BG = SURFACE
 
 
 class ReportsWindow(tk.Toplevel):
+    """Displays income and expense analysis via pie and bar charts.
+
+    Parameters
+    ----------
+    parent : tk.Tk
+        The root application window.
+    db : FinanceDatabase
+        The shared database instance used to fetch transaction data.
+    """
+
     def __init__(self, parent, db):
         super().__init__(parent)
 
@@ -37,6 +49,7 @@ class ReportsWindow(tk.Toplevel):
         self.draw_charts()
 
     def build_ui(self):
+        """Construct the header, tab buttons, and chart container."""
         page = tk.Frame(self, bg=BG)
         page.pack(fill="both", expand=True, padx=58, pady=46)
         page.grid_columnconfigure(0, weight=1)
@@ -78,18 +91,10 @@ class ReportsWindow(tk.Toplevel):
         tabs = tk.Frame(page, bg=BG)
         tabs.grid(row=1, column=0, sticky="w", pady=(0, 24))
 
-        self.category_btn = self.create_tab_button(
-            tabs,
-            "Expenses by Category",
-            "category"
-        )
+        self.category_btn = self.create_tab_button(tabs, "Expenses by Category", "category")
         self.category_btn.pack(side="left", padx=(0, 10))
 
-        self.monthly_btn = self.create_tab_button(
-            tabs,
-            "Monthly Overview",
-            "monthly"
-        )
+        self.monthly_btn = self.create_tab_button(tabs, "Monthly Overview", "monthly")
         self.monthly_btn.pack(side="left")
 
         chart_area = tk.Frame(page, bg=SURFACE)
@@ -103,6 +108,7 @@ class ReportsWindow(tk.Toplevel):
         self.update_tab_styles()
 
     def create_button(self, parent, text, command, bg, fg):
+        """Create and return a standard action button."""
         return tk.Button(
             parent,
             text=text,
@@ -120,6 +126,7 @@ class ReportsWindow(tk.Toplevel):
         )
 
     def create_tab_button(self, parent, text, value):
+        """Create and return a tab toggle button for the given chart view."""
         return tk.Button(
             parent,
             text=text,
@@ -133,11 +140,13 @@ class ReportsWindow(tk.Toplevel):
         )
 
     def switch_tab(self, value):
+        """Set the active tab and redraw the corresponding chart."""
         self.active_tab.set(value)
         self.update_tab_styles()
         self.draw_charts()
 
     def update_tab_styles(self):
+        """Apply active/inactive visual state to the tab buttons."""
         active = self.active_tab.get()
 
         buttons = [
@@ -148,35 +157,33 @@ class ReportsWindow(tk.Toplevel):
         for button, value in buttons:
             if active == value:
                 button.configure(
-                    bg=TEXT,
-                    fg="#FFFFFF",
-                    activebackground="#1E293B",
-                    activeforeground="#FFFFFF"
+                    bg=TEXT, fg="#FFFFFF",
+                    activebackground="#1E293B", activeforeground="#FFFFFF"
                 )
             else:
                 button.configure(
-                    bg=INPUT,
-                    fg=TEXT,
-                    activebackground=INPUT_HOVER,
-                    activeforeground=TEXT
+                    bg=INPUT, fg=TEXT,
+                    activebackground=INPUT_HOVER, activeforeground=TEXT
                 )
 
     def clear_chart(self):
+        """Destroy all widgets inside the chart container and reset the canvas reference."""
         for widget in self.chart_container.winfo_children():
             widget.destroy()
 
         self.chart_canvas = None
 
     def draw_charts(self):
+        """Dispatch to the appropriate chart method based on the active tab."""
         if self.active_tab.get() == "category":
             self.draw_pie_chart()
         else:
             self.draw_bar_chart()
 
     def style_figure(self, fig, ax):
+        """Apply the application colour theme to a Matplotlib Figure and Axes pair."""
         fig.patch.set_facecolor(SURFACE)
         ax.set_facecolor(SURFACE)
-
         ax.title.set_color(TEXT)
         ax.tick_params(colors=MUTED)
 
@@ -184,6 +191,7 @@ class ReportsWindow(tk.Toplevel):
             spine.set_visible(False)
 
     def show_empty_state(self, title, message):
+        """Render a placeholder message when no data is available for the active chart."""
         self.clear_chart()
 
         empty = tk.Frame(self.chart_container, bg=SURFACE)
@@ -206,6 +214,7 @@ class ReportsWindow(tk.Toplevel):
         ).pack(anchor="center")
 
     def draw_pie_chart(self):
+        """Render a pie chart showing the expense total for each category."""
         self.clear_chart()
 
         transactions = self.db.get_transactions()
@@ -226,16 +235,7 @@ class ReportsWindow(tk.Toplevel):
         ax = fig.add_subplot(111)
         self.style_figure(fig, ax)
 
-        colors = [
-            PINK,
-            PURPLE,
-            CYAN,
-            GREEN,
-            SLATE,
-            "#C4B5FD",
-            "#BAE6FD",
-            "#FBCFE8",
-        ]
+        colors = [PINK, PURPLE, CYAN, GREEN, SLATE, "#C4B5FD", "#BAE6FD", "#FBCFE8"]
 
         wedges, texts, autotexts = ax.pie(
             totals.values(),
@@ -243,15 +243,8 @@ class ReportsWindow(tk.Toplevel):
             autopct="%1.1f%%",
             startangle=90,
             colors=colors[:len(totals)],
-            textprops={
-                "color": TEXT,
-                "fontsize": 9,
-                "fontname": FONT
-            },
-            wedgeprops={
-                "linewidth": 2,
-                "edgecolor": SURFACE
-            }
+            textprops={"color": TEXT, "fontsize": 9, "fontname": FONT},
+            wedgeprops={"linewidth": 2, "edgecolor": SURFACE}
         )
 
         for autotext in autotexts:
@@ -260,7 +253,6 @@ class ReportsWindow(tk.Toplevel):
 
         ax.set_title("Expenses by Category", fontsize=16, fontweight="bold", pad=20)
         ax.axis("equal")
-
         fig.tight_layout()
 
         canvas = FigureCanvasTkAgg(fig, master=self.chart_container)
@@ -270,19 +262,17 @@ class ReportsWindow(tk.Toplevel):
         self.chart_canvas = canvas
 
     def draw_bar_chart(self):
+        """Render a grouped bar chart comparing monthly income and expenses."""
         self.clear_chart()
 
         transactions = self.db.get_transactions()
 
         monthly = {}
         for t in transactions:
-            month = t[1][:7]
+            month = t[1][:7]  # YYYY-MM key extracted from the full YYYY-MM-DD date
 
             if month not in monthly:
-                monthly[month] = {
-                    "Income": 0.0,
-                    "Expense": 0.0
-                }
+                monthly[month] = {"Income": 0.0, "Expense": 0.0}
 
             monthly[month][t[2]] += float(t[4])
 
@@ -304,34 +294,16 @@ class ReportsWindow(tk.Toplevel):
         x = list(range(len(months)))
         width = 0.35
 
-        ax.bar(
-            [i - width / 2 for i in x],
-            incomes,
-            width,
-            label="Income",
-            color=GREEN
-        )
-
-        ax.bar(
-            [i + width / 2 for i in x],
-            expenses,
-            width,
-            label="Expense",
-            color=PINK
-        )
+        ax.bar([i - width / 2 for i in x], incomes,  width, label="Income",  color=GREEN)
+        ax.bar([i + width / 2 for i in x], expenses, width, label="Expense", color=PINK)
 
         ax.set_title("Monthly Income vs Expense", fontsize=16, fontweight="bold", pad=20)
         ax.set_xticks(x)
         ax.set_xticklabels(months, rotation=0, ha="center")
         ax.tick_params(axis="x", labelsize=9)
         ax.tick_params(axis="y", labelsize=9)
-
         ax.grid(axis="y", color=INPUT, linewidth=1)
-        ax.legend(
-            frameon=False,
-            loc="upper right",
-            fontsize=10
-        )
+        ax.legend(frameon=False, loc="upper right", fontsize=10)
 
         fig.tight_layout()
 

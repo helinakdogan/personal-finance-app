@@ -1,96 +1,33 @@
+"""Categories window — create and delete income/expense category labels.
+
+Category names must be unique per type; the constraint is enforced at the
+database level (UNIQUE index) and surfaced to the user via a warning dialog.
+Deletion is blocked when a category is referenced by existing transactions.
+"""
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as msg
 
+from windows.custom_components import SelectBox
+from windows.custom_components.theme import (
+    SURFACE, TEXT, MUTED, INPUT, INPUT_HOVER, BLUE, FONT
+)
 
-BG = "#FFFFFF"
-SURFACE = "#FFFFFF"
-TEXT = "#0F172A"
-MUTED = "#64748B"
-INPUT = "#F3F6FA"
-INPUT_HOVER = "#EEF2F7"
-BLUE = "#60A5FA"
-
-FONT = "Inter"
-
-
-class SelectBox(tk.Frame):
-    def __init__(self, parent, variable, values=None):
-        super().__init__(parent, bg=INPUT, cursor="hand2")
-        self.variable = variable
-        self.values = values or []
-        self.menu = None
-
-        self.label = tk.Label(
-            self,
-            textvariable=self.variable,
-            bg=INPUT,
-            fg=TEXT,
-            font=(FONT, 11),
-            anchor="w",
-            padx=16,
-            pady=12,
-            cursor="hand2"
-        )
-        self.label.pack(side="left", fill="x", expand=True)
-
-        self.arrow = tk.Label(
-            self,
-            text="⌄",
-            bg=INPUT,
-            fg=MUTED,
-            font=(FONT, 14),
-            padx=16,
-            cursor="hand2"
-        )
-        self.arrow.pack(side="right")
-
-        for widget in (self, self.label, self.arrow):
-            widget.bind("<Button-1>", self.open_menu)
-
-    def open_menu(self, event=None):
-        if self.menu and self.menu.winfo_exists():
-            self.menu.destroy()
-            return
-
-        self.menu = tk.Toplevel(self)
-        self.menu.overrideredirect(True)
-        self.menu.configure(bg=SURFACE)
-
-        x = self.winfo_rootx()
-        y = self.winfo_rooty() + self.winfo_height() + 4
-        width = self.winfo_width()
-        height = max(44, len(self.values) * 42)
-
-        self.menu.geometry(f"{width}x{height}+{x}+{y}")
-
-        for value in self.values:
-            item = tk.Label(
-                self.menu,
-                text=value,
-                bg=SURFACE,
-                fg=TEXT,
-                font=(FONT, 10),
-                anchor="w",
-                padx=16,
-                pady=12,
-                cursor="hand2"
-            )
-            item.pack(fill="x")
-            item.bind("<Button-1>", lambda e, v=value: self.select(v))
-            item.bind("<Enter>", lambda e, w=item: w.configure(bg=INPUT))
-            item.bind("<Leave>", lambda e, w=item: w.configure(bg=SURFACE))
-
-        self.menu.lift()
-
-    def select(self, value):
-        self.variable.set(value)
-
-        if self.menu and self.menu.winfo_exists():
-            self.menu.destroy()
+BG = SURFACE
 
 
 class CategoriesWindow(tk.Toplevel):
+    """Screen for creating and deleting income and expense category labels.
+
+    Parameters
+    ----------
+    parent : tk.Tk
+        The root application window.
+    db : FinanceDatabase
+        The shared database instance used to persist and query categories.
+    """
+
     def __init__(self, parent, db):
         super().__init__(parent)
 
@@ -109,6 +46,7 @@ class CategoriesWindow(tk.Toplevel):
         self.load_categories()
 
     def build_ui(self):
+        """Construct the name input, type selector, Add button, and category table."""
         page = tk.Frame(self, bg=BG)
         page.pack(fill="both", expand=True, padx=58, pady=46)
         page.grid_columnconfigure(0, weight=1)
@@ -286,6 +224,13 @@ class CategoriesWindow(tk.Toplevel):
         self.txt_name.focus_set()
 
     def create_button(self, parent, text, command, bg, fg, disabled=False):
+        """Create and return a styled action button.
+
+        Parameters
+        ----------
+        disabled : bool
+            When True the button is rendered in a disabled state initially.
+        """
         btn = tk.Button(
             parent,
             text=text,
@@ -308,6 +253,7 @@ class CategoriesWindow(tk.Toplevel):
         return btn
 
     def load_categories(self):
+        """Clear the Treeview and reload all categories from the database."""
         for item in self.tv.get_children():
             self.tv.delete(item)
 
@@ -322,10 +268,12 @@ class CategoriesWindow(tk.Toplevel):
         self.btn_delete.configure(state="disabled")
 
     def on_item_select(self, event=None):
+        """Enable the Delete button when a row is selected; disable it otherwise."""
         state = "normal" if self.tv.selection() else "disabled"
         self.btn_delete.configure(state=state)
 
     def on_add(self):
+        """Validate the name field and insert a new category into the database."""
         name = self.var_name.get().strip()
         type_ = self.var_type.get()
 
@@ -342,6 +290,11 @@ class CategoriesWindow(tk.Toplevel):
             msg.showwarning("Validation Error", str(e), parent=self)
 
     def on_delete(self, event=None):
+        """Prompt the user and delete the selected category if confirmed.
+
+        Deletion is blocked by FinanceDatabase when the category is still
+        referenced by one or more transactions.
+        """
         selection = self.tv.selection()
         if not selection:
             return

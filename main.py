@@ -1,3 +1,10 @@
+"""Application entry point for Flowance.
+
+MainApp is the root tk.Tk window.  It initialises the database, builds the
+navigation grid of ActionCards, and manages a registry of child windows so
+that each feature window can only be opened once at a time.
+"""
+
 import tkinter as tk
 
 from database import FinanceDatabase
@@ -7,88 +14,23 @@ from windows.add_income import AddIncomeWindow
 from windows.history import HistoryWindow
 from windows.reports import ReportsWindow
 from windows.categories import CategoriesWindow
+from windows.custom_components import ActionCard
+from windows.custom_components.theme import (
+    BG_PAGE as BG, SURFACE, TEXT, MUTED, SOFT, CYAN, BLUE, PURPLE, PINK, SLATE, FONT
+)
 from PIL import Image, ImageTk
 
 APP_NAME = "Flowance"
 
-BG = "#F8FAFC"
-SURFACE = "#FFFFFF"
-
-TEXT = "#0F172A"
-MUTED = "#64748B"
-
-SOFT = "#F1F5F9"
-
-CYAN = "#7DD3FC"
-BLUE = "#60A5FA"
-PURPLE = "#818CF8"
-PINK = "#F9A8D4"
-
-SLATE = "#94A3B8"
-FONT = "Inter"
-
-
-
-
-class ActionCard(tk.Frame):
-    def __init__(self, parent, title, subtitle, accent, command):
-        super().__init__(parent, bg=SURFACE, cursor="hand2")
-
-        self.command = command
-        self.accent = accent
-        self.default_bg = SURFACE
-        self.hover_bg = "#F8FAFC"
-
-        self.configure(padx=22, pady=20)
-
-        self.dot = tk.Frame(self, bg=accent, width=9, height=9)
-        self.dot.grid(row=0, column=0, sticky="w", pady=(0, 18))
-        self.dot.grid_propagate(False)
-
-        self.title_label = tk.Label(
-            self,
-            text=title,
-            bg=SURFACE,
-            fg=TEXT,
-            font=(FONT, 15, "bold"),
-            anchor="w"
-        )
-        self.title_label.grid(row=1, column=0, sticky="w")
-
-        self.subtitle_label = tk.Label(
-            self,
-            text=subtitle,
-            bg=SURFACE,
-            fg=MUTED,
-            font=(FONT, 10),
-            anchor="w",
-            justify="left",
-            wraplength=180
-        )
-        self.subtitle_label.grid(row=2, column=0, sticky="w", pady=(8, 0))
-
-        self.grid_columnconfigure(0, weight=1)
-
-        for widget in (self, self.dot, self.title_label, self.subtitle_label):
-            widget.bind("<Button-1>", self.on_click)
-            widget.bind("<Enter>", self.on_enter)
-            widget.bind("<Leave>", self.on_leave)
-
-    def on_click(self, event=None):
-        self.command()
-
-    def on_enter(self, event=None):
-        self.configure(bg=self.hover_bg)
-        self.title_label.configure(bg=self.hover_bg, fg=self.accent)
-        self.subtitle_label.configure(bg=self.hover_bg)
-
-    def on_leave(self, event=None):
-        self.configure(bg=self.default_bg)
-        self.title_label.configure(bg=self.default_bg, fg=TEXT)
-        self.subtitle_label.configure(bg=self.default_bg)
-
 
 class MainApp(tk.Tk):
+    """Root application window for Flowance.
+
+    Initialises the database, renders the navigation grid of ActionCards,
+    and maintains a registry of child windows so that each screen can be
+    opened at most once at a time.
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -105,6 +47,7 @@ class MainApp(tk.Tk):
         self.build_ui()
 
     def build_ui(self):
+        """Construct the logo header and the six-card navigation grid."""
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -123,11 +66,10 @@ class MainApp(tk.Tk):
         self.logo = ImageTk.PhotoImage(image)
 
         logo_label = tk.Label(
-             header,
+            header,
             image=self.logo,
             bg=BG
         )
-
         logo_label.grid(row=0, column=0, sticky="w")
 
         title = tk.Label(
@@ -172,7 +114,6 @@ class MainApp(tk.Tk):
         for i in range(3):
             grid.grid_columnconfigure(i, weight=1, uniform="cards")
 
-
         actions = [
             ("Dashboard", "See balance, totals and recent activity.", BLUE, self.open_dashboard),
             ("Add Expense", "Record spending with category and note.", PINK, self.open_add_expense),
@@ -193,9 +134,16 @@ class MainApp(tk.Tk):
                 ipady=10
             )
 
-      
-
     def _open_window(self, key, window_class):
+        """Open a child window, or focus it if it is already open.
+
+        Parameters
+        ----------
+        key : str
+            Unique identifier for the window type (e.g. 'dashboard').
+        window_class : type
+            The Toplevel subclass to instantiate when no existing window is found.
+        """
         if key in self._windows and self._windows[key].winfo_exists():
             self._windows[key].lift()
             self._windows[key].focus_set()

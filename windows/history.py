@@ -1,20 +1,26 @@
+"""Transaction History window — full ledger with inline edit and delete.
+
+HistoryWindow lists all transactions in a scrollable Treeview.
+Selecting a row enables the Edit and Delete buttons; double-clicking a row
+opens EditTransactionWindow as a modal dialog.
+
+Date values are stored in the database as YYYY-MM-DD and converted to
+MM.DD.YYYY for display.  The conversion is reversed before any update is
+written back.
+"""
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as msg
 from datetime import datetime
 
 from validators import TransactionValidator, ValidationError
+from windows.custom_components import SelectBox
+from windows.custom_components.theme import (
+    SURFACE, TEXT, MUTED, INPUT, INPUT_HOVER, SLATE, FONT
+)
 
-
-BG = "#FFFFFF"
-SURFACE = "#FFFFFF"
-TEXT = "#0F172A"
-MUTED = "#64748B"
-INPUT = "#F3F6FA"
-INPUT_HOVER = "#EEF2F7"
-SLATE = "#94A3B8"
-
-FONT = "Inter"
+BG = SURFACE
 
 
 def db_date_to_ui(value):
@@ -28,90 +34,21 @@ def ui_date_to_db(value):
     return datetime.strptime(value, "%m.%d.%Y").strftime("%Y-%m-%d")
 
 
-class SelectBox(tk.Frame):
-    def __init__(self, parent, variable, values=None, on_select=None):
-        super().__init__(parent, bg=INPUT, cursor="hand2")
-        self.variable = variable
-        self.values = values or []
-        self.on_select = on_select
-        self.menu = None
-
-        self.label = tk.Label(
-            self,
-            textvariable=self.variable,
-            bg=INPUT,
-            fg=TEXT,
-            font=(FONT, 11),
-            anchor="w",
-            padx=16,
-            pady=12,
-            cursor="hand2"
-        )
-        self.label.pack(side="left", fill="x", expand=True)
-
-        self.arrow = tk.Label(
-            self,
-            text="⌄",
-            bg=INPUT,
-            fg=MUTED,
-            font=(FONT, 14),
-            padx=16,
-            cursor="hand2"
-        )
-        self.arrow.pack(side="right")
-
-        for widget in (self, self.label, self.arrow):
-            widget.bind("<Button-1>", self.open_menu)
-
-    def set_values(self, values):
-        self.values = values
-
-    def open_menu(self, event=None):
-        if self.menu and self.menu.winfo_exists():
-            self.menu.destroy()
-            return
-
-        self.menu = tk.Toplevel(self)
-        self.menu.overrideredirect(True)
-        self.menu.configure(bg=SURFACE)
-
-        x = self.winfo_rootx()
-        y = self.winfo_rooty() + self.winfo_height() + 4
-        width = self.winfo_width()
-        height = max(44, len(self.values) * 42)
-
-        self.menu.geometry(f"{width}x{height}+{x}+{y}")
-
-        for value in self.values:
-            item = tk.Label(
-                self.menu,
-                text=value,
-                bg=SURFACE,
-                fg=TEXT,
-                font=(FONT, 10),
-                anchor="w",
-                padx=16,
-                pady=12,
-                cursor="hand2"
-            )
-            item.pack(fill="x")
-            item.bind("<Button-1>", lambda e, v=value: self.select(v))
-            item.bind("<Enter>", lambda e, w=item: w.configure(bg=INPUT))
-            item.bind("<Leave>", lambda e, w=item: w.configure(bg=SURFACE))
-
-        self.menu.lift()
-
-    def select(self, value):
-        self.variable.set(value)
-
-        if self.on_select:
-            self.on_select()
-
-        if self.menu and self.menu.winfo_exists():
-            self.menu.destroy()
-
-
 class HistoryWindow(tk.Toplevel):
+    """Full transaction ledger with inline edit and delete capabilities.
+
+    All stored YYYY-MM-DD dates are converted to MM.DD.YYYY for display.
+    Selecting a row activates the Edit and Delete buttons; double-clicking
+    a row opens EditTransactionWindow as a modal dialog.
+
+    Parameters
+    ----------
+    parent : tk.Tk
+        The root application window.
+    db : FinanceDatabase
+        The shared database instance used to fetch, update, and delete records.
+    """
+
     def __init__(self, parent, db):
         super().__init__(parent)
 
@@ -127,6 +64,7 @@ class HistoryWindow(tk.Toplevel):
         self.load_transactions()
 
     def build_ui(self):
+        """Construct the header, scrollable Treeview, and Edit/Delete action buttons."""
         page = tk.Frame(self, bg=BG)
         page.pack(fill="both", expand=True, padx=58, pady=46)
         page.grid_columnconfigure(0, weight=1)
@@ -230,14 +168,13 @@ class HistoryWindow(tk.Toplevel):
         actions.grid(row=2, column=0, sticky="ew", pady=(24, 0))
         actions.grid_columnconfigure(0, weight=1)
 
-        hint = tk.Label(
+        tk.Label(
             actions,
             text="Select a transaction to edit or delete.",
             bg=BG,
             fg=MUTED,
             font=(FONT, 10)
-        )
-        hint.grid(row=0, column=0, sticky="w")
+        ).grid(row=0, column=0, sticky="w")
 
         self.btn_edit = self.create_button(
             actions,
@@ -264,6 +201,13 @@ class HistoryWindow(tk.Toplevel):
         self.tv.bind("<Delete>", self.on_delete)
 
     def create_button(self, parent, text, command, bg, fg, disabled=False):
+        """Create and return a styled action button.
+
+        Parameters
+        ----------
+        disabled : bool
+            When True the button is rendered in a disabled state initially.
+        """
         btn = tk.Button(
             parent,
             text=text,
@@ -286,6 +230,7 @@ class HistoryWindow(tk.Toplevel):
         return btn
 
     def load_transactions(self):
+        """Clear the Treeview and reload all transactions from the database."""
         for item in self.tv.get_children():
             self.tv.delete(item)
 
@@ -309,11 +254,13 @@ class HistoryWindow(tk.Toplevel):
         self.btn_delete.configure(state="disabled")
 
     def on_item_select(self, event=None):
+        """Enable the Edit and Delete buttons when a row is selected."""
         state = "normal" if self.tv.selection() else "disabled"
         self.btn_edit.configure(state=state)
         self.btn_delete.configure(state=state)
 
     def on_delete(self, event=None):
+        """Prompt the user and permanently delete the selected transaction if confirmed."""
         selection = self.tv.selection()
         if not selection:
             return
@@ -329,6 +276,7 @@ class HistoryWindow(tk.Toplevel):
             self.btn_delete.configure(state="disabled")
 
     def on_edit(self, event=None):
+        """Open EditTransactionWindow for the selected row and refresh the table on close."""
         selection = self.tv.selection()
         if not selection:
             return
@@ -355,6 +303,33 @@ class HistoryWindow(tk.Toplevel):
 
 
 class EditTransactionWindow(tk.Toplevel):
+    """Modal dialog for editing an existing transaction.
+
+    Opened by HistoryWindow when the user clicks Edit or double-clicks a row.
+    Validates updated fields through TransactionValidator before writing to
+    the database.  The caller blocks on wait_window() and refreshes the ledger
+    after this dialog closes.
+
+    Parameters
+    ----------
+    parent : HistoryWindow
+        The parent history window; used to constrain the modal grab.
+    db : FinanceDatabase
+        The shared database instance.
+    transaction_id : int
+        Primary key of the transaction being edited.
+    date : str
+        Current date value in MM.DD.YYYY display format.
+    type_ : str
+        Current transaction type ('Income' or 'Expense').
+    category : str
+        Current category name.
+    amount : str
+        Current amount as a numeric string (currency symbol already stripped).
+    description : str
+        Current optional note.
+    """
+
     def __init__(self, parent, db, transaction_id, date, type_, category, amount, description):
         super().__init__(parent)
 
@@ -377,6 +352,7 @@ class EditTransactionWindow(tk.Toplevel):
         self.build_ui()
 
     def build_ui(self):
+        """Construct the edit form with pre-populated fields for each transaction attribute."""
         page = tk.Frame(self, bg=BG)
         page.pack(fill="both", expand=True, padx=42, pady=34)
         page.grid_columnconfigure(0, weight=1)
@@ -424,6 +400,7 @@ class EditTransactionWindow(tk.Toplevel):
         self._refresh_categories()
 
     def create_button(self, parent, text, command, bg, fg):
+        """Create and return a styled action button."""
         return tk.Button(
             parent,
             text=text,
@@ -441,6 +418,7 @@ class EditTransactionWindow(tk.Toplevel):
         )
 
     def create_field_wrapper(self, parent, row, label):
+        """Create a labelled wrapper frame for a form field and return it."""
         wrapper = tk.Frame(parent, bg=SURFACE)
         wrapper.grid(row=row, column=0, sticky="ew", pady=(0, 18))
         wrapper.grid_columnconfigure(0, weight=1)
@@ -456,6 +434,7 @@ class EditTransactionWindow(tk.Toplevel):
         return wrapper
 
     def create_input(self, parent, row, label, variable, helper=""):
+        """Add a text entry field to the form and return the Entry widget."""
         wrapper = self.create_field_wrapper(parent, row, label)
 
         box = tk.Frame(wrapper, bg=INPUT)
@@ -486,6 +465,7 @@ class EditTransactionWindow(tk.Toplevel):
         return entry
 
     def create_select(self, parent, row, label, variable, values, command=None):
+        """Add a SelectBox dropdown field to the form and return the SelectBox widget."""
         wrapper = self.create_field_wrapper(parent, row, label)
 
         select = SelectBox(
@@ -499,6 +479,7 @@ class EditTransactionWindow(tk.Toplevel):
         return select
 
     def _refresh_categories(self, event=None):
+        """Filter the category dropdown to match the currently selected transaction type."""
         current_type = self.var_type.get()
 
         filtered = []
@@ -515,9 +496,11 @@ class EditTransactionWindow(tk.Toplevel):
                 self.var_category.set("")
 
     def on_type_change(self, event=None):
+        """Callback invoked when the Type SelectBox value changes."""
         self._refresh_categories()
 
     def on_update(self):
+        """Validate the edited fields and write the updated record to the database."""
         try:
             db_date = ui_date_to_db(self.var_date.get())
 
