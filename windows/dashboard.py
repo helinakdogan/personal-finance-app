@@ -36,12 +36,13 @@ class DashboardWindow(tk.Toplevel):
 
         self.db = db
 
+        # StringVars are bound to the SummaryCards; setting them later auto-updates the labels.
         self.var_income = tk.StringVar(value="₺0.00")
         self.var_expense = tk.StringVar(value="₺0.00")
         self.var_balance = tk.StringVar(value="₺0.00")
 
         self.build_ui()
-        self.load_data()
+        self.load_data()  # Fill the cards and table with real figures right after building the UI.
 
     def build_ui(self):
         """Construct the header, three SummaryCards, and the recent-transactions table."""
@@ -132,6 +133,7 @@ class DashboardWindow(tk.Toplevel):
 
         style = ttk.Style()
 
+        # Custom layout strips the default Treeview border so it blends into the flat surface.
         style.layout("Flowance.Treeview", [
             ("Flowance.Treeview.treearea", {"sticky": "nswe"})
         ])
@@ -188,21 +190,25 @@ class DashboardWindow(tk.Toplevel):
         total_income = 0
         total_expense = 0
 
+        # Sum amounts into two buckets by type; index 2 is the type, index 4 is the amount.
         for t in transactions:
             if t[2] == "Income":
                 total_income += t[4]
             elif t[2] == "Expense":
                 total_expense += t[4]
 
-        balance = total_income - total_expense
+        balance = total_income - total_expense  # Balance is simply income minus expenses.
 
+        # Push the computed totals into the bound StringVars, which refreshes the cards on screen.
         self.var_income.set(f"₺{total_income:.2f}")
         self.var_expense.set(f"₺{total_expense:.2f}")
         self.var_balance.set(f"₺{balance:.2f}")
 
+        # Clear the table before repopulating so Refresh never stacks duplicate rows.
         for item in self.tv.get_children():
             self.tv.delete(item)
 
+        # Transactions come back date-ascending, so the last 5 are the most recent ones.
         recent = transactions[-5:]
         for t in recent:
             self.tv.insert(
