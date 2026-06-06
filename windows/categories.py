@@ -257,6 +257,7 @@ class CategoriesWindow(tk.Toplevel):
         for item in self.tv.get_children():
             self.tv.delete(item)
 
+        # iid set to the category id (index 0) so on_delete can remove the right DB row directly.
         for category in self.db.get_categories():
             self.tv.insert(
                 parent="",
@@ -274,7 +275,7 @@ class CategoriesWindow(tk.Toplevel):
 
     def on_add(self):
         """Validate the name field and insert a new category into the database."""
-        name = self.var_name.get().strip()
+        name = self.var_name.get().strip()  # strip() so a name of only spaces counts as empty.
         type_ = self.var_type.get()
 
         if not name:
@@ -283,9 +284,11 @@ class CategoriesWindow(tk.Toplevel):
 
         try:
             self.db.add_category(name, type_)
+            # Success: clear the field, refresh the list, and refocus for fast repeated entry.
             self.var_name.set("")
             self.load_categories()
             self.txt_name.focus_set()
+        # add_category raises ValueError on a duplicate name+type; show it as a warning.
         except ValueError as e:
             msg.showwarning("Validation Error", str(e), parent=self)
 
@@ -304,6 +307,8 @@ class CategoriesWindow(tk.Toplevel):
         if answer:
             for iid in selection:
                 try:
+                    # delete_category refuses categories still used by transactions and raises
+                    # ValueError; only drop the table row once the DB delete succeeds.
                     self.db.delete_category(int(iid))
                     self.tv.delete(iid)
                 except ValueError as e:
