@@ -37,6 +37,7 @@ class TransactionValidator:
         ------
         ValidationError – if any field fails its constraint
         """
+        # Strip leading/trailing whitespace so " 250 " or accidental spaces don't break checks.
         date        = date.strip()
         type_       = type_.strip()
         category    = category.strip()
@@ -46,6 +47,7 @@ class TransactionValidator:
         if not date:
             raise ValidationError("Date is required.")
 
+        # strptime raises ValueError on a malformed date; we translate it into a user-facing message.
         try:
             datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
@@ -53,6 +55,7 @@ class TransactionValidator:
                 "Invalid date format. Please use YYYY-MM-DD (e.g. 2026-05-15)."
             )
 
+        # Type drives which category list is shown, so it must be one of the two known values.
         if type_ not in ("Income", "Expense"):
             raise ValidationError("Transaction type must be either 'Income' or 'Expense'.")
 
@@ -62,12 +65,15 @@ class TransactionValidator:
         if not amount:
             raise ValidationError("Amount is required.")
 
+        # Amount arrives as text from the form; float() converts it and rejects non-numeric input.
         try:
             amount_value = float(amount)
         except ValueError:
             raise ValidationError("Amount must be a valid number (e.g. 250 or 1500.50).")
 
+        # A transaction of zero or negative value is meaningless, so block it.
         if amount_value <= 0:
             raise ValidationError("Amount must be greater than zero.")
 
+        # Return the cleaned tuple; amount is now a float ready for the database layer.
         return date, type_, category, amount_value, description
