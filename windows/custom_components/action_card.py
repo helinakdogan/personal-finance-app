@@ -27,7 +27,7 @@ class ActionCard(tk.Frame):
         self.command = command
         self.accent = accent
         self.default_bg = SURFACE
-        self.hover_bg = "#F8FAFC"
+        self.hover_bg = "#F8FAFC"  # Slightly tinted background swapped in on hover for feedback.
 
         self.configure(padx=22, pady=20)
 
@@ -59,6 +59,7 @@ class ActionCard(tk.Frame):
 
         self.grid_columnconfigure(0, weight=1)
 
+        # Bind every child as well, otherwise clicking/hovering the text wouldn't trigger the card.
         for widget in (self, self.dot, self.title_label, self.subtitle_label):
             widget.bind("<Button-1>", self.on_click)
             widget.bind("<Enter>", self.on_enter)
@@ -68,11 +69,13 @@ class ActionCard(tk.Frame):
         self.command()
 
     def on_enter(self, event=None):
+        # Hover in: tint the whole card and recolour the title with its accent.
         self.configure(bg=self.hover_bg)
         self.title_label.configure(bg=self.hover_bg, fg=self.accent)
         self.subtitle_label.configure(bg=self.hover_bg)
 
     def on_leave(self, event=None):
+        # Hover out: restore the default surface colour and the neutral title colour.
         self.configure(bg=self.default_bg)
         self.title_label.configure(bg=self.default_bg, fg=TEXT)
         self.subtitle_label.configure(bg=self.default_bg)
