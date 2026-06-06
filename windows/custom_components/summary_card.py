@@ -35,6 +35,8 @@ class SummaryCard(tk.Frame):
             anchor="w"
         ).grid(row=1, column=0, sticky="w")
 
+        # textvariable binds to the caller's StringVar, so the dashboard updates this number
+        # just by calling value_var.set(...) — no direct reference to the label is needed.
         tk.Label(
             self,
             textvariable=value_var,
