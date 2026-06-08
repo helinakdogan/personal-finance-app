@@ -7,6 +7,7 @@ All figures are recalculated on demand when the Refresh button is pressed.
 
 import tkinter as tk
 from tkinter import ttk
+from windows.history import db_date_to_ui
 
 from windows.custom_components import SummaryCard
 from windows.custom_components.theme import (
@@ -211,8 +212,9 @@ class DashboardWindow(tk.Toplevel):
         # Transactions come back date-ascending, so the last 5 are the most recent ones.
         recent = transactions[-5:]
         for t in recent:
+            formatted_date = db_date_to_ui(t[1])
             self.tv.insert(
                 parent="",
                 index="end",
-                values=(t[1], t[2], t[3], f"₺{t[4]:.2f}")
+                values=(formatted_date, t[2], t[3], f"₺{t[4]:.2f}")
             )
